@@ -1,0 +1,16 @@
+# Java / Maven
+backend/target/
+*.class
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Node / React (for later stages)
+node_modules/
+frontend/dist/
+
+# Secrets
+.env
