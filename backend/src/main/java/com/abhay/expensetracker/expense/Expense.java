@@ -1,5 +1,6 @@
 package com.abhay.expensetracker.expense;
 
+import com.abhay.expensetracker.category.Category;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -31,6 +32,12 @@ public class Expense {
     @Column(length = 500)
     private String note;
 
+    // MANY expenses -> ONE category. LAZY = the category row is only loaded when accessed.
+    // This side owns the foreign key column (category_id).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -40,11 +47,12 @@ public class Expense {
     protected Expense() {
     }
 
-    public Expense(String title, BigDecimal amount, LocalDate expenseDate, String note) {
+    public Expense(String title, BigDecimal amount, LocalDate expenseDate, String note, Category category) {
         this.title = title;
         this.amount = amount;
         this.expenseDate = expenseDate;
         this.note = note;
+        this.category = category;
     }
 
     // Lifecycle callbacks: Hibernate calls these right before INSERT / UPDATE
@@ -64,6 +72,7 @@ public class Expense {
     public BigDecimal getAmount() { return amount; }
     public LocalDate getExpenseDate() { return expenseDate; }
     public String getNote() { return note; }
+    public Category getCategory() { return category; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
@@ -71,4 +80,5 @@ public class Expense {
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public void setExpenseDate(LocalDate expenseDate) { this.expenseDate = expenseDate; }
     public void setNote(String note) { this.note = note; }
+    public void setCategory(Category category) { this.category = category; }
 }

@@ -1,9 +1,14 @@
 package com.abhay.expensetracker.expense;
 
+import com.abhay.expensetracker.category.Category;
+import com.abhay.expensetracker.category.CategoryService;
+import com.abhay.expensetracker.common.PageResponse;
 import com.abhay.expensetracker.common.ResourceNotFoundException;
 import com.abhay.expensetracker.expense.dto.ExpenseRequest;
 import com.abhay.expensetracker.expense.dto.ExpenseResponse;
-import org.springframework.data.domain.Sort;
+import com.abhay.expensetracker.expense.dto.MonthlyTotal;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,23 +24,27 @@ import java.util.List;
 public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
+    private final CategoryService categoryService;
 
-    // Constructor injection: Spring sees this constructor and passes in the repository bean.
-    public ExpenseService(ExpenseRepository expenseRepository) {
+    // Constructor injection: Spring sees this constructor and passes in the beans.
+    public ExpenseService(ExpenseRepository expenseRepository, CategoryService categoryService) {
         this.expenseRepository = expenseRepository;
+        this.categoryService = categoryService;
     }
 
     @Transactional(readOnly = true)
-    public List<ExpenseResponse> findAll(LocalDate from, LocalDate to) {
-        List<Expense> expenses;
-        if (from == null && to == null) {
-            expenses = expenseRepository.findAll(Sort.by(Sort.Direction.DESC, "expenseDate"));
-        } else {
-            LocalDate start = (from != null) ? from : LocalDate.of(1970, 1, 1);
-            LocalDate end = (to != null) ? to : LocalDate.now();
-            expenses = expenseRepository.findByExpenseDateBetweenOrderByExpenseDateDesc(start, end);
-        }
-        return expenses.stream().map(ExpenseResponse::from).toList();
+    public PageResponse<ExpenseResponse> findAll(LocalDate from, LocalDate to, Long categoryId, Pageable pageable) {
+        Specification<Expense> spec = Specification
+                .where(ExpenseSpecifications.dateFrom(from))
+                .and(ExpenseSpecifications.dateTo(to))
+                .and(ExpenseSpecifications.inCategory(categoryId));
+        return PageResponse.of(expenseRepository.findAll(spec, pageable), ExpenseResponse::from);
+    }
+
+    /** Total spent per month in the given year (months with no expenses are omitted). */
+    @Transactional(readOnly = true)
+    public List<MonthlyTotal> monthlyTotals(int year) {
+        return expenseRepository.findMonthlyTotals(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31));
     }
 
     @Transactional(readOnly = true)
@@ -45,7 +54,8 @@ public class ExpenseService {
 
     public ExpenseResponse create(ExpenseRequest request) {
         Expense expense = new Expense(
-                request.title(), request.amount(), request.expenseDate(), request.note());
+                request.title(), request.amount(), request.expenseDate(), request.note(),
+                resolveCategory(request.categoryId()));
         return ExpenseResponse.from(expenseRepository.save(expense));
     }
 
@@ -55,6 +65,7 @@ public class ExpenseService {
         expense.setAmount(request.amount());
         expense.setExpenseDate(request.expenseDate());
         expense.setNote(request.note());
+        expense.setCategory(resolveCategory(request.categoryId()));
         // No save() needed! The entity is "managed" inside this transaction, so Hibernate
         // detects the changes (dirty checking) and runs the UPDATE when the method returns.
         return ExpenseResponse.from(expense);
@@ -63,6 +74,10 @@ public class ExpenseService {
     public void delete(Long id) {
         Expense expense = getOrThrow(id);
         expenseRepository.delete(expense);
+    }
+
+    private Category resolveCategory(Long categoryId) {
+        return categoryId == null ? null : categoryService.getOrThrow(categoryId);
     }
 
     private Expense getOrThrow(Long id) {

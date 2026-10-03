@@ -1,5 +1,6 @@
 package com.abhay.expensetracker.common;
 
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -21,6 +22,22 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleNotFound(ResourceNotFoundException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         pd.setTitle("Resource not found");
+        return pd;
+    }
+
+    // 409 -> duplicate category name, or deleting a category that still has expenses
+    @ExceptionHandler(ConflictException.class)
+    public ProblemDetail handleConflict(ConflictException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        pd.setTitle("Conflict");
+        return pd;
+    }
+
+    // 400 -> ?sort=bogus (Spring Data throws this when the sort property doesn't exist)
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ProblemDetail handleBadSort(PropertyReferenceException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        pd.setTitle("Invalid sort property");
         return pd;
     }
 

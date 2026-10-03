@@ -25,6 +25,9 @@ public record ExpenseRequest(
         LocalDate expenseDate,
 
         @Size(max = 500, message = "Note must be at most 500 characters")
-        String note
+        String note,
+
+        // optional: omit or null for "uncategorized"
+        Long categoryId
 ) {
 }

@@ -8,7 +8,7 @@ A deliberately simple app built in stages, to understand how Spring Boot works l
 
 ## Roadmap
 - [x] **Stage 1** — Expense CRUD, validation, global error handling, Flyway, Swagger
-- [ ] **Stage 2** — Categories (one-to-many), pagination & sorting, monthly totals query
+- [x] **Stage 2** — Categories (one-to-many), pagination & sorting, monthly totals query
 - [ ] **Stage 3** — Users, Spring Security + JWT, each user sees only their own expenses
 - [ ] **Stage 4** — React frontend (login, dashboard, add/edit expense), CORS
 - [ ] **Stage 5** — Tests (JUnit, Mockito, integration test), profiles (dev/prod)
@@ -27,23 +27,37 @@ A deliberately simple app built in stages, to understand how Spring Boot works l
    (Or open `backend/` in IntelliJ and run `ExpenseTrackerApplication`.)
 3. Open Swagger UI: http://localhost:8080/swagger-ui.html
 
-## API (Stage 1)
+## API
 
-| Method | URL                                           | Description            |
-|--------|-----------------------------------------------|------------------------|
-| GET    | `/api/expenses`                               | List all expenses      |
-| GET    | `/api/expenses?from=2026-09-01&to=2026-09-30` | Filter by date range   |
-| GET    | `/api/expenses/{id}`                          | Get one                |
-| POST   | `/api/expenses`                               | Create                 |
-| PUT    | `/api/expenses/{id}`                          | Update                 |
-| DELETE | `/api/expenses/{id}`                          | Delete                 |
+| Method | URL                                  | Description                                   |
+|--------|--------------------------------------|-----------------------------------------------|
+| GET    | `/api/expenses`                      | Paged list (see query params below)           |
+| GET    | `/api/expenses/summary/monthly`      | Monthly totals, `?year=2026` (default: current) |
+| GET    | `/api/expenses/{id}`                 | Get one                                       |
+| POST   | `/api/expenses`                      | Create (optional `categoryId`)                |
+| PUT    | `/api/expenses/{id}`                 | Update                                        |
+| DELETE | `/api/expenses/{id}`                 | Delete                                        |
+| GET    | `/api/categories`                    | List categories                               |
+| GET    | `/api/categories/{id}`               | Get one                                       |
+| POST   | `/api/categories`                    | Create (409 if name exists)                   |
+| PUT    | `/api/categories/{id}`               | Rename                                        |
+| DELETE | `/api/categories/{id}`               | Delete (409 if it still has expenses)         |
 
-Example:
+`GET /api/expenses` query params (all optional): `page` (0-based), `size` (default 20, max 100),
+`sort` (e.g. `amount,desc`; default `expenseDate,desc`), `from`, `to` (dates), `categoryId`.
+The response is `{ content, page, size, totalElements, totalPages }`.
+
+Examples:
 ```bash
 curl -X POST http://localhost:8080/api/expenses \
   -H "Content-Type: application/json" \
-  -d '{"title":"Lunch","amount":180.50,"expenseDate":"2026-10-01","note":"Canteen"}'
+  -d '{"title":"Lunch","amount":180.50,"expenseDate":"2026-10-01","note":"Canteen","categoryId":1}'
+
+curl "http://localhost:8080/api/expenses?categoryId=1&sort=amount,desc&page=0&size=10"
+curl "http://localhost:8080/api/expenses/summary/monthly?year=2026"
 ```
+
+Migration `V2` seeds five categories (Food, Transport, Rent, Entertainment, Other).
 
 ## How a request flows
 ```
