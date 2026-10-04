@@ -8,12 +8,15 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * REPOSITORY: you write only the interface, Spring Data generates the implementation at startup.
  * JpaSpecificationExecutor adds findAll(Specification, Pageable) for optional, combinable filters.
  */
 public interface ExpenseRepository extends JpaRepository<Expense, Long>, JpaSpecificationExecutor<Expense> {
+
+    Optional<Expense> findByIdAndUserId(Long id, Long userId);
 
     boolean existsByCategoryId(Long categoryId);
 
@@ -23,9 +26,9 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long>, JpaSpec
             select new com.abhay.expensetracker.expense.dto.MonthlyTotal(
                 year(e.expenseDate), month(e.expenseDate), sum(e.amount), count(e))
             from Expense e
-            where e.expenseDate between :from and :to
+            where e.user.id = :userId and e.expenseDate between :from and :to
             group by year(e.expenseDate), month(e.expenseDate)
             order by year(e.expenseDate), month(e.expenseDate)
             """)
-    List<MonthlyTotal> findMonthlyTotals(@Param("from") LocalDate from, @Param("to") LocalDate to);
+    List<MonthlyTotal> findMonthlyTotals(@Param("userId") Long userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
 }

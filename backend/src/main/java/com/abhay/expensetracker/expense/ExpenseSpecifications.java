@@ -10,6 +10,10 @@ final class ExpenseSpecifications {
     private ExpenseSpecifications() {
     }
 
+    static Specification<Expense> ownedBy(Long userId) {
+        return (root, q, cb) -> cb.equal(root.get("user").get("id"), userId);
+    }
+
     static Specification<Expense> dateFrom(LocalDate from) {
         return from == null ? null : (root, q, cb) -> cb.greaterThanOrEqualTo(root.get("expenseDate"), from);
     }

@@ -1,6 +1,7 @@
 package com.abhay.expensetracker.expense;
 
 import com.abhay.expensetracker.category.Category;
+import com.abhay.expensetracker.user.User;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -38,6 +39,11 @@ public class Expense {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    // The owner. Every query in the service filters by it, so users only ever see their own rows.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", updatable = false)
+    private User user;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -47,12 +53,13 @@ public class Expense {
     protected Expense() {
     }
 
-    public Expense(String title, BigDecimal amount, LocalDate expenseDate, String note, Category category) {
+    public Expense(String title, BigDecimal amount, LocalDate expenseDate, String note, Category category, User user) {
         this.title = title;
         this.amount = amount;
         this.expenseDate = expenseDate;
         this.note = note;
         this.category = category;
+        this.user = user;
     }
 
     // Lifecycle callbacks: Hibernate calls these right before INSERT / UPDATE

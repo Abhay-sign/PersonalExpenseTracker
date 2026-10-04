@@ -7,6 +7,7 @@ import com.abhay.expensetracker.common.ResourceNotFoundException;
 import com.abhay.expensetracker.expense.dto.ExpenseRequest;
 import com.abhay.expensetracker.expense.dto.ExpenseResponse;
 import com.abhay.expensetracker.expense.dto.MonthlyTotal;
+import com.abhay.expensetracker.user.UserRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -25,17 +26,21 @@ public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final CategoryService categoryService;
+    private final UserRepository userRepository;
 
     // Constructor injection: Spring sees this constructor and passes in the beans.
-    public ExpenseService(ExpenseRepository expenseRepository, CategoryService categoryService) {
+    public ExpenseService(ExpenseRepository expenseRepository, CategoryService categoryService,
+                          UserRepository userRepository) {
         this.expenseRepository = expenseRepository;
         this.categoryService = categoryService;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ExpenseResponse> findAll(LocalDate from, LocalDate to, Long categoryId, Pageable pageable) {
+    public PageResponse<ExpenseResponse> findAll(Long userId, LocalDate from, LocalDate to, Long categoryId, Pageable pageable) {
         Specification<Expense> spec = Specification
-                .where(ExpenseSpecifications.dateFrom(from))
+                .where(ExpenseSpecifications.ownedBy(userId))
+                .and(ExpenseSpecifications.dateFrom(from))
                 .and(ExpenseSpecifications.dateTo(to))
                 .and(ExpenseSpecifications.inCategory(categoryId));
         return PageResponse.of(expenseRepository.findAll(spec, pageable), ExpenseResponse::from);
@@ -43,24 +48,25 @@ public class ExpenseService {
 
     /** Total spent per month in the given year (months with no expenses are omitted). */
     @Transactional(readOnly = true)
-    public List<MonthlyTotal> monthlyTotals(int year) {
-        return expenseRepository.findMonthlyTotals(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31));
+    public List<MonthlyTotal> monthlyTotals(Long userId, int year) {
+        return expenseRepository.findMonthlyTotals(userId, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31));
     }
 
     @Transactional(readOnly = true)
-    public ExpenseResponse findById(Long id) {
-        return ExpenseResponse.from(getOrThrow(id));
+    public ExpenseResponse findById(Long userId, Long id) {
+        return ExpenseResponse.from(getOrThrow(userId, id));
     }
 
-    public ExpenseResponse create(ExpenseRequest request) {
+    public ExpenseResponse create(Long userId, ExpenseRequest request) {
         Expense expense = new Expense(
                 request.title(), request.amount(), request.expenseDate(), request.note(),
-                resolveCategory(request.categoryId()));
+                resolveCategory(request.categoryId()),
+                userRepository.getReferenceById(userId)); // proxy by id, no SELECT needed
         return ExpenseResponse.from(expenseRepository.save(expense));
     }
 
-    public ExpenseResponse update(Long id, ExpenseRequest request) {
-        Expense expense = getOrThrow(id);
+    public ExpenseResponse update(Long userId, Long id, ExpenseRequest request) {
+        Expense expense = getOrThrow(userId, id);
         expense.setTitle(request.title());
         expense.setAmount(request.amount());
         expense.setExpenseDate(request.expenseDate());
@@ -71,8 +77,8 @@ public class ExpenseService {
         return ExpenseResponse.from(expense);
     }
 
-    public void delete(Long id) {
-        Expense expense = getOrThrow(id);
+    public void delete(Long userId, Long id) {
+        Expense expense = getOrThrow(userId, id);
         expenseRepository.delete(expense);
     }
 
@@ -80,8 +86,9 @@ public class ExpenseService {
         return categoryId == null ? null : categoryService.getOrThrow(categoryId);
     }
 
-    private Expense getOrThrow(Long id) {
-        return expenseRepository.findById(id)
+    // Someone else's expense looks exactly like a missing one (404), so ids can't be probed.
+    private Expense getOrThrow(Long userId, Long id) {
+        return expenseRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense with id " + id + " not found"));
     }
 }

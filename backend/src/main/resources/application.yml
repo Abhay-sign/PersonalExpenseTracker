@@ -30,6 +30,12 @@ spring:
   flyway:
     enabled: true
 
+app:
+  jwt:
+    # DEV DEFAULT ONLY. In any real deployment set JWT_SECRET (32+ chars) as an environment variable.
+    secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+
 server:
   port: 8080
 

@@ -9,7 +9,7 @@ A deliberately simple app built in stages, to understand how Spring Boot works l
 ## Roadmap
 - [x] **Stage 1** — Expense CRUD, validation, global error handling, Flyway, Swagger
 - [x] **Stage 2** — Categories (one-to-many), pagination & sorting, monthly totals query
-- [ ] **Stage 3** — Users, Spring Security + JWT, each user sees only their own expenses
+- [x] **Stage 3** — Users, Spring Security + JWT, each user sees only their own expenses
 - [ ] **Stage 4** — React frontend (login, dashboard, add/edit expense), CORS
 - [ ] **Stage 5** — Tests (JUnit, Mockito, integration test), profiles (dev/prod)
 
@@ -28,6 +28,16 @@ A deliberately simple app built in stages, to understand how Spring Boot works l
 3. Open Swagger UI: http://localhost:8080/swagger-ui.html
 
 ## API
+
+**Auth (Stage 3):** every `/api/expenses` and `/api/categories` call needs `Authorization: Bearer <token>`.
+Get a token from the public endpoints below. Each user only sees their own expenses (categories are shared).
+In Swagger UI use the **Authorize** button and paste the token.
+
+| Method | URL                      | Description                              |
+|--------|--------------------------|------------------------------------------|
+| POST   | `/api/auth/register`     | `{email, password}` -> 201 + token (409 if email taken) |
+| POST   | `/api/auth/login`        | `{email, password}` -> token (401 if wrong) |
+
 
 | Method | URL                                  | Description                                   |
 |--------|--------------------------------------|-----------------------------------------------|
@@ -56,6 +66,9 @@ curl -X POST http://localhost:8080/api/expenses \
 curl "http://localhost:8080/api/expenses?categoryId=1&sort=amount,desc&page=0&size=10"
 curl "http://localhost:8080/api/expenses/summary/monthly?year=2026"
 ```
+
+Set `JWT_SECRET` (32+ chars) in any real deployment; a dev default is used otherwise.
+Migration `V3` adds users; expenses from Stages 1-2 have no owner and are not visible to any user.
 
 Migration `V2` seeds five categories (Food, Transport, Rent, Entertainment, Other).
 
